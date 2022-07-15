@@ -71,29 +71,38 @@ def send_faucet_transaction(address: str, tokens: float):
 
 def send_mumbai_faucet_transaction(address: str, tokens: float):
     nonce = mumbai_w3.eth.getTransactionCount(FAUCET_ADDRESS)
-    signed_txn = mumbai_w3.eth.account.sign_transaction(dict(
-        nonce=nonce,
-        gasPrice=25000000000,
-        gas=21000,
-        to=address,
-        value=int(tokens * 1e18),
-        data=b'',
-        chainId=80001,
-    ),
-        FAUCET_PRIVKEY,
-    )
 
-    try:
-        # Send the transaction
-        txn_hash = mumbai_w3.eth.send_raw_transaction(signed_txn.rawTransaction)
+    for gas in [35 * 1e9, 50 * 1e9, 100 * 1e9, 350 * 1e9, 500 * 1e9, 1000 * 1e9]:
+        try:
+            log("Trying testnet transaction to " + address + " with nonce " + str(nonce) + " and gas " + str(gas / 1e9))
 
-        # Wait for confirmation the transaction was mined
-        mumbai_w3.eth.wait_for_transaction_receipt(txn_hash, timeout=30)
+            # Create the transaction
+            signed_txn = mumbai_w3.eth.account.sign_transaction(dict(
+                nonce=nonce,
+                gasPrice=gas,
+                gas=50000,
+                to=address,
+                value=int(tokens * 1e18),
+                data=b'',
+                chainId=80001,
+            ),
+                FAUCET_PRIVKEY,
+            )
 
-        return True
-    except Exception as e:
-        raw_audit_log(str(datetime.now()) + ": Sending failed: " + str(e))
-        return False
+            # Send the transaction
+            txn_hash = mumbai_w3.eth.send_raw_transaction(signed_txn.rawTransaction)
+
+            # Wait for confirmation the transaction was mined
+            mumbai_w3.eth.wait_for_transaction_receipt(txn_hash, timeout=30)
+
+            log("Sent testnet transaction to " + address + " with nonce " + str(nonce))
+            raw_audit_log(str(datetime.now()) + ": Sent " + str(tokens) + " Matic to " + str(address) +
+                          " with nonce " + str(nonce) + " and gas " + str(gas / 1e9))
+            return True
+        except Exception as e:
+            raw_audit_log(str(datetime.now()) + ": Sending failed: " + str(e))
+    raw_audit_log(str(datetime.now()) + ": Sending failed.")
+    return False
 
 
 # Get address balance
