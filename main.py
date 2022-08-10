@@ -224,8 +224,14 @@ async def blacklist_address(ctx, address: str):
 async def mumbai_faucet(ctx, address: str, tokens=MAX_MUMBAI_TOKENS_REQUESTED):
     log("Mumbai-faucet called")
 
+    # if the faucet does not have enough funds, deny
+    if faucet.get_mumbai_balance() < (tokens + 0.1):
+        response = "The faucet does not have enough funds. Please refill <@712863455467667526>. \n" \
+                   "`" + FAUCET_ADDRESS + "`"
+        raw_audit_log(str(datetime.now()) + ": The faucet is out of funds.")
+
     # if user's requests too many tokens, deny
-    if tokens > MAX_MUMBAI_TOKENS_REQUESTED:
+    elif tokens > MAX_MUMBAI_TOKENS_REQUESTED:
         response = "Please only request up to " + str(MAX_MUMBAI_TOKENS_REQUESTED) + " Matic at a time."
 
     elif address == address.lower():
@@ -237,11 +243,14 @@ async def mumbai_faucet(ctx, address: str, tokens=MAX_MUMBAI_TOKENS_REQUESTED):
         response = "User blacklisted."
         raw_audit_log(str(datetime.now()) + ": " + address + " is on the blacklist.")
 
+    # if the user has requested more than 50 matic, prevent the spam
+    elif DB_CHECK and (user_db.get_user_totals(ctx.author.id, address, "Mumbai") >= 50):
+        response = "You have already requested 50 Matic. Please ping <@712863455467667526> for more."
+
     # if we passed all the above checks, proceed
     elif valid_address(address):
 
-        # if faucet.get_mumbai_balance() > tokens:
-        # if the user or address has already received > max Matic, deny
+        # if the user or address has already received > max Matic, drop down to 0.5
         if DB_CHECK and (user_db.get_user_totals(ctx.author.id, address, "Mumbai") >= MAX_MUMBAI_TOKENS_REQUESTED):
             response = "You have already requested the maximum allowed, dropping down to 0.5 Matic."
             await ctx.send(response)
