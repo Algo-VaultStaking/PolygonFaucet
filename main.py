@@ -301,7 +301,7 @@ async def mumbai_faucet_override(ctx, address: str, tokens=1):
             success = faucet.send_mumbai_faucet_transaction(address, tokens)
             if success:
                 response = "**Sent " + str(tokens) + " Matic to " + address[:4] + "..." + address[-2:] + \
-                           ". **The faucet now has " + str(faucet.get_faucet_balance()) + " Matic left."
+                           ". **The faucet now has " + str(faucet.get_mumbai_balance()) + " Matic left."
             else:
                 response = "There was an error."
         else:
