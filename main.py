@@ -11,7 +11,7 @@ import argparse
 import json
 from faucet import valid_address
 
-from logger import log, audit_log, raw_audit_log
+from logger import log, raw_audit_log
 
 # Load config
 c = configparser.ConfigParser()
@@ -56,8 +56,6 @@ async def version(ctx):
 @commands.has_any_role(*MEMBER_DISCORD_ROLES)
 async def mainnet_faucet(ctx, address: str):
     tokens = 0.01
-    audit_log(str(ctx.author), str(ctx.author.id), address, tokens)
-
 
     # if the user is too new to the guild
     if (datetime.now() - ctx.author.joined_at).days < 1:
