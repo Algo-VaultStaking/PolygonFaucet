@@ -15,8 +15,11 @@ FAUCET_PRIVKEY = str(c["FAUCET"]["private_key"])
 rpc_url = str(c["RPC"]["mainnet"])
 w3 = Web3(Web3.HTTPProvider(rpc_url))
 
-mumbai_rpc_url = rpc_url = str(c["RPC"]["testnet"])
+mumbai_rpc_url = str(c["RPC"]["mumbai"])
 mumbai_w3 = Web3(Web3.HTTPProvider(mumbai_rpc_url))
+
+amoy_rpc_url = str(c["RPC"]["amoy"])
+amoy_w3 = Web3(Web3.HTTPProvider(amoy_rpc_url))
 
 
 def valid_address(address):
@@ -105,6 +108,42 @@ def send_mumbai_faucet_transaction(address: str, tokens: float):
     return False
 
 
+def send_amoy_faucet_transaction(address: str, tokens: float):
+    nonce = amoy_w3.eth.getTransactionCount(FAUCET_ADDRESS)
+
+    for gas in [int(35 * 1e9), int(50 * 1e9), int(100 * 1e9), int(350 * 1e9), int(500 * 1e9), int(1000 * 1e9)]:
+        try:
+            log("Trying testnet transaction to " + address + " with nonce " + str(nonce) + " and gas " + str(gas / 1e9))
+
+            # Create the transaction
+            signed_txn = amoy_w3.eth.account.sign_transaction(dict(
+                nonce=nonce,
+                gasPrice=int(gas),
+                gas=50000,
+                to=address,
+                value=int(tokens * 1e18),
+                data=b'',
+                chainId=80002,
+            ),
+                FAUCET_PRIVKEY,
+            )
+
+            # Send the transaction
+            txn_hash = amoy_w3.eth.send_raw_transaction(signed_txn.rawTransaction)
+
+            # Wait for confirmation the transaction was mined
+            amoy_w3.eth.wait_for_transaction_receipt(txn_hash, timeout=30)
+
+            log("Sent testnet transaction to " + address + " with nonce " + str(nonce))
+            raw_audit_log(str(datetime.now()) + ": Sent " + str(tokens) + " Matic to " + str(address) +
+                          " with nonce " + str(nonce) + " and gas " + str(gas / 1e9))
+            return True
+        except Exception as e:
+            raw_audit_log(str(datetime.now()) + ": Sending failed: " + str(e))
+    raw_audit_log(str(datetime.now()) + ": Sending failed.")
+    return False
+
+
 # Get address balance
 def get_balance(address):
     try:
@@ -128,6 +167,14 @@ def get_faucet_balance():
 def get_mumbai_balance():
     try:
         response = mumbai_w3.eth.getBalance(FAUCET_ADDRESS) / 1e18
+    except Exception as e:
+        response = e
+    return response
+
+
+def get_amoy_balance():
+    try:
+        response = amoy_w3.eth.getBalance(FAUCET_ADDRESS) / 1e18
     except Exception as e:
         response = e
     return response

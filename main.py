@@ -1,5 +1,6 @@
 from datetime import datetime
 
+import discord
 from discord.ext import commands
 from discord.ext.commands import BadArgument, MissingRequiredArgument, CommandInvokeError, MissingRole, MissingAnyRole
 
@@ -18,7 +19,6 @@ c.read("config.ini", encoding='utf-8')
 argparser = argparse.ArgumentParser()
 
 MAX_TOKENS_REQUESTED = float(c["TOKEN COUNTS"]["MAX_TOKENS_REQUESTED"])
-MAX_MUMBAI_TOKENS_REQUESTED = float(c["TOKEN COUNTS"]["MAX_MUMBAI_TOKENS_REQUESTED"])
 FAUCET_ADDRESS = str(c["FAUCET"]["address"])
 DISCORD_TOKEN = str(c["DISCORD"]["token"])
 MEMBER_DISCORD_ROLES = json.loads(c["DISCORD"]["member_roles"])
@@ -28,8 +28,11 @@ ERROR_MESSAGE_CHANNEL = int(c["DISCORD"]["error_channel"])
 DB_CHECK = True if str(c["DATABASE"]["db_check"]).lower() == "true" else False
 
 token = DISCORD_TOKEN
+intents = discord.Intents.default()
+intents.members = True
+intents.messages = True
 
-bot = commands.Bot(command_prefix='faucet-')
+bot = commands.Bot(command_prefix='faucet-', intents=intents)
 
 
 def thanks(addr):
@@ -45,27 +48,19 @@ async def on_ready():
 
 @bot.command(name='version', help='usage: faucet-version')
 @commands.has_any_role(*ADMIN_DISCORD_ROLES)
-async def mainnet_faucet(ctx):
-    await ctx.send('v1.0.0')
+async def version(ctx):
+    await ctx.send('v1.1.0')
 
 
-@bot.command(name='send', help='usage: faucet-send  [address] [tokens]')
+@bot.command(name='mainnet', help='usage: faucet-mainnet  [address]')
 @commands.has_any_role(*MEMBER_DISCORD_ROLES)
-async def mainnet_faucet(ctx, address: str, tokens=0.01):
-    # tokens = 0.01
-    audit_log(str(ctx.author), str(ctx.author.id), address, tokens)
+async def mainnet_faucet(ctx, address: str):
+    audit_log(str(ctx.author), str(ctx.author.id), address)
+    tokens = 0.01
 
-    # if user's token request is not between 0.04 and 0.001, deny
-    if tokens > MAX_TOKENS_REQUESTED:
-        response = "Please only request up to " + str(MAX_TOKENS_REQUESTED) + " Matic at a time."
-        raw_audit_log(str(datetime.now()) + ": " + str(ctx.author) + "(" + str(ctx.author.id) +
-                      ") requested too many tokens.")
-
-    # if token request is too small
-    elif tokens < 0.001:
-        response = "Please request at least 0.001 Matic."
-        raw_audit_log(str(datetime.now()) + ": " + str(ctx.author) + "(" + str(ctx.author.id) +
-                      ") requested too few tokens.")
+    # if the user is too new to the guild
+    if (datetime.now() - ctx.author.joined_at).days < 1:
+        response = "Your account is too new to this guild. Please wait before requesting mainnet Matic tokens."
 
     # if the address's balance already has enough Matic, deny
     elif faucet.get_balance(address) >= MAX_TOKENS_REQUESTED:
@@ -73,7 +68,7 @@ async def mainnet_faucet(ctx, address: str, tokens=0.01):
         raw_audit_log(str(datetime.now()) + ": " + str(ctx.author) + "(" + str(ctx.author.id) + ") already has " +
                       str(faucet.get_faucet_balance()) + " tokens in their wallet.")
 
-    # if the user or address has already received > 0.03 Matic, deny
+    # if the user or address has already the max tokens, deny
     elif DB_CHECK and (user_db.get_user_totals(ctx.author.id, address, "Mainnet") >= MAX_TOKENS_REQUESTED):
         log(str(tokens) + " excess tokens requested by " + str(ctx.author.id) + " author and " + str(
             address) + " address.")
@@ -83,7 +78,7 @@ async def mainnet_faucet(ctx, address: str, tokens=0.01):
 
     # if we do not have a good address
     elif not valid_address(address):
-        response = "usage: `faucet  send [address] [tokens]`. \n" \
+        response = "usage: `faucet-mainnet  [address]`. \n" \
                    "Please enter a valid address."
         raw_audit_log(str(datetime.now()) + ": " + str(ctx.author) + "(" + str(ctx.author.id) +
                       ") has an invalid address.")
@@ -95,7 +90,7 @@ async def mainnet_faucet(ctx, address: str, tokens=0.01):
 
     # if the faucet does not have enough funds, deny
     elif faucet.get_faucet_balance() < (tokens + MAX_TOKENS_REQUESTED):
-        response = "The faucet does not have enough funds. Please refill. \n" \
+        response = "The faucet does not have enough funds. Please refill. cc:<@712863455467667526>\n" \
                    "`" + FAUCET_ADDRESS + "`"
         raw_audit_log(str(datetime.now()) + ": The faucet is out of funds.")
 
@@ -126,17 +121,16 @@ async def mainnet_faucet(ctx, address: str, tokens=0.01):
 
         else:
             response = "The bot cannot confirm the transaction went through, please check on Polygonscan. " \
-                       "If still not received, try again."
+                       "If still not received, try again. cc: <@712863455467667526>"
 
     # embed = discord.Embed()
     # embed.description = response
     await ctx.send(response)
 
 
-@bot.command(name='override', help='usage: faucet-override [address] [tokens]')
+@bot.command(name='mainnet-override', help='usage: faucet-override [address] [tokens]')
 @commands.has_any_role(*ADMIN_DISCORD_ROLES)
 async def mainnet_faucet_override(ctx, address: str, tokens=0.01):
-    print("here")
     log('mainnet_faucet_override called')
 
     # if we have a good address
@@ -152,8 +146,7 @@ async def mainnet_faucet_override(ctx, address: str, tokens=0.01):
 
             success = faucet.send_faucet_transaction(address, tokens)
             if success:
-                response = "**Sent " + str(tokens) + " Matic to " + address[:4] + "..." + address[-2:] + \
-                           ". **The faucet now has " + str(faucet.get_faucet_balance()) + " Matic left."
+                response = f"Sent {str(tokens)} Matic to {address[:4]}...{address[-2:]}."
             else:
                 response = "There was an error, please try again later or alert an admin."
         else:
@@ -219,20 +212,17 @@ async def blacklist_address(ctx, address: str):
     return
 
 
-@bot.command(name='mumbai', help='usage: faucet-mumbai [address] [tokens]')
+@bot.command(name='mumbai', help='usage: faucet-mumbai [address]')
 @commands.has_any_role(*DEVELOPER_DISCORD_ROLES)
-async def mumbai_faucet(ctx, address: str, tokens=MAX_MUMBAI_TOKENS_REQUESTED):
+async def mumbai_faucet(ctx, address: str):
     log("Mumbai-faucet called")
+    tokens = 1
 
     # if the faucet does not have enough funds, deny
     if faucet.get_mumbai_balance() < (tokens + 0.1):
         response = "The faucet does not have enough funds. Please refill <@712863455467667526>. \n" \
                    "`" + FAUCET_ADDRESS + "`"
         raw_audit_log(str(datetime.now()) + ": The faucet is out of funds.")
-
-    # if user's requests too many tokens, deny
-    elif tokens > MAX_MUMBAI_TOKENS_REQUESTED:
-        response = "Please only request up to " + str(MAX_MUMBAI_TOKENS_REQUESTED) + " Matic at a time."
 
     elif address == address.lower():
         response = "Your address appears to be in the wrong format. Please make sure your address has both upper- " \
@@ -250,12 +240,6 @@ async def mumbai_faucet(ctx, address: str, tokens=MAX_MUMBAI_TOKENS_REQUESTED):
     # if we passed all the above checks, proceed
     elif valid_address(address):
 
-        # if the user or address has already received > max Matic, drop down to 0.5
-        if DB_CHECK and (user_db.get_user_totals(ctx.author.id, address, "Mumbai") >= MAX_MUMBAI_TOKENS_REQUESTED):
-            response = "You have already requested the maximum allowed, dropping down to 0.5 Matic."
-            await ctx.send(response)
-            tokens = 0.5
-
         await ctx.send("The transaction has started and can take up to 2 minutes. Please wait until " +
                        "confirmation before requesting more.")
 
@@ -266,7 +250,7 @@ async def mumbai_faucet(ctx, address: str, tokens=MAX_MUMBAI_TOKENS_REQUESTED):
             if DB_CHECK:
                 user_db.add_transaction(str(ctx.author.id), address, tokens,
                                     datetime.now().strftime("%m/%d/%Y, %H:%M:%S"), "Mumbai")
-            response = "**Sent " + str(tokens) + " test Matic to " + address[:6] + "..." + \
+            response = "**Sent " + str(tokens) + " mumbai Matic to " + address[:6] + "..." + \
                        address[-4:] + ".**"
 
         else:
@@ -274,7 +258,7 @@ async def mumbai_faucet(ctx, address: str, tokens=MAX_MUMBAI_TOKENS_REQUESTED):
                        "If still not received, try again."
 
     else:
-        response = "usage: `faucet-mumbai  [address]  [tokens]`. \n" \
+        response = "usage: `faucet-mumbai  [address]`. \n" \
                    "Please enter a valid address."
     log("Mumbai-faucet: " + response)
     await ctx.send(response)
@@ -284,7 +268,6 @@ async def mumbai_faucet(ctx, address: str, tokens=MAX_MUMBAI_TOKENS_REQUESTED):
 @bot.command(name='mumbai-override', help='usage: faucet-mumbai-override [address] [tokens]')
 @commands.has_any_role(*ADMIN_DISCORD_ROLES)
 async def mumbai_faucet_override(ctx, address: str, tokens=1):
-    print("here")
     log('mumbai_faucet_override called')
 
     # if we have a good address
@@ -338,6 +321,121 @@ async def mumbai_faucet_error(ctx, error):
         raise error
     elif isinstance(error, MissingRequiredArgument):
         await ctx.send("usage: `faucet-mumbai  [address]  [tokens]`")
+        raise error
+    else:
+        log(error)
+        raise error
+
+
+@bot.command(name='amoy', help='usage: faucet-amoy [address]')
+@commands.has_any_role(*DEVELOPER_DISCORD_ROLES)
+async def amoy_faucet(ctx, address: str):
+    log("amoy-faucet called")
+    tokens = 0.5
+
+    # if the faucet does not have enough funds, deny
+    if faucet.get_amoy_balance() < (tokens + 0.1):
+        response = "The faucet does not have enough funds. Please refill <@712863455467667526>. \n" \
+                   "`" + FAUCET_ADDRESS + "`"
+        raw_audit_log(str(datetime.now()) + ": The faucet is out of funds.")
+
+    elif address == address.lower():
+        response = "Your address appears to be in the wrong format. Please make sure your address has both upper- " \
+                   "and lower-case letters. This can be found on Polygonscan, or your wallet."
+        raw_audit_log(str(datetime.now()) + ": " + address + " was in the wrong format.")
+
+    elif DB_CHECK and user_db.check_if_blacklisted(ctx.author.id, address):
+        response = "User blacklisted."
+        raw_audit_log(str(datetime.now()) + ": " + address + " is on the blacklist.")
+
+    # if the user has requested more than 50 matic, prevent the spam
+    elif DB_CHECK and (user_db.get_user_totals(ctx.author.id, address, "Amoy") >= 20):
+        response = "You have already requested 20 Matic. Please ping <@712863455467667526> for more."
+
+    # if we passed all the above checks, proceed
+    elif valid_address(address):
+
+        await ctx.send("The transaction has started and can take up to 2 minutes. Please wait until " +
+                       "confirmation before requesting more.")
+
+        success = faucet.send_amoy_faucet_transaction(address, tokens)
+
+        # success = True
+        if success:
+            if DB_CHECK:
+                user_db.add_transaction(str(ctx.author.id), address, tokens,
+                                    datetime.now().strftime("%m/%d/%Y, %H:%M:%S"), "Amoy")
+            response = "**Sent " + str(tokens) + " amoy Matic to " + address[:6] + "..." + \
+                       address[-4:] + ".**"
+
+        else:
+            response = "The bot cannot confirm the transaction went through, please check on Polygonscan. " \
+                       "If still not received, try again."
+
+    else:
+        response = "usage: `faucet-amoy  [address]`. \n" \
+                   "Please enter a valid address."
+    log("amoy-faucet: " + response)
+    await ctx.send(response)
+    return
+
+
+@bot.command(name='amoy-override', help='usage: faucet-amoy-override [address] [tokens]')
+@commands.has_any_role(*ADMIN_DISCORD_ROLES)
+async def amoy_faucet_override(ctx, address: str, tokens=1):
+    log('amoy_faucet_override called')
+
+    # if we have a good address
+    if address == address.lower():
+        response = "Your address appears to be in the wrong format. Please make sure your address has both upper- " \
+                   "and lower-case letters. This can be found on Polygonscan, or your wallet."
+        raw_audit_log(str(datetime.now()) + ": " + address + " was in the wrong format.")
+
+    elif valid_address(address):
+
+        if faucet.get_amoy_balance() > (tokens + 0.01):
+            await ctx.send("The transaction has started and can take up to 2 minutes.")
+
+            success = faucet.send_amoy_faucet_transaction(address, tokens)
+            if success:
+                response = "**Sent " + str(tokens) + " Matic to " + address[:4] + "..." + address[-2:] + \
+                           ". **The faucet now has " + str(faucet.get_amoy_balance()) + " Matic left."
+            else:
+                response = "There was an error."
+        else:
+            response = f"The faucet does not have enough funds. Please refill.\n`{FAUCET_ADDRESS}`"
+    else:
+        response = "usage: `faucet  send  [address]  [tokens]`. \n" \
+                   "Please enter a valid address."
+    await ctx.send(response)
+
+
+@bot.command(name='amoy-balance', help='usage: faucet-amoy-balance')
+@commands.has_any_role(*ADMIN_DISCORD_ROLES)
+async def get_amoy_balance(ctx):
+    try:
+        balance = faucet.get_amoy_balance()
+        response = "The faucet has " + str(balance) + " Maticmum"
+        await ctx.send(response)
+    except Exception as e:
+        log(e)
+
+
+@amoy_faucet.error
+async def amoy_faucet_error(ctx, error):
+    if isinstance(error, CommandInvokeError):
+        await ctx.send("There was an issue, possibly with the RPC.")
+        raise error
+    elif isinstance(error, MissingAnyRole):
+        await ctx.send(
+            "You are missing at least one of the required roles: '" + ", ".join(DEVELOPER_DISCORD_ROLES) + "'.")
+        raise error
+    elif isinstance(error, BadArgument):
+        await ctx.send("usage: `faucet-amoy  [address]`. \n"
+                       "Please enter a valid address.")
+        raise error
+    elif isinstance(error, MissingRequiredArgument):
+        await ctx.send("usage: `faucet-amoy  [address]`")
         raise error
     else:
         log(error)
