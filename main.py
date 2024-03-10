@@ -55,8 +55,9 @@ async def version(ctx):
 @bot.command(name='mainnet', help='usage: faucet-mainnet  [address]')
 @commands.has_any_role(*MEMBER_DISCORD_ROLES)
 async def mainnet_faucet(ctx, address: str):
-    audit_log(str(ctx.author), str(ctx.author.id), address)
     tokens = 0.01
+    audit_log(str(ctx.author), str(ctx.author.id), address, tokens)
+
 
     # if the user is too new to the guild
     if (datetime.now() - ctx.author.joined_at).days < 1:
