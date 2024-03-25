@@ -10,7 +10,7 @@ import logging
 c = configparser.ConfigParser()
 c.read("config.ini", encoding='utf-8')
 
-AUDIT_LOG = str(c["GENERAL"]["audit_log"])
+#AUDIT_LOG = str(c["GENERAL"]["audit_log"])
 
 #def log(message):
 #    if secrets.environment == 'test':
@@ -35,7 +35,8 @@ def audit_log(user_name: str, user_id: str, address: str, tokens: float):
 
 
 def raw_audit_log(message: str):
-    f = open(secrets.AUDIT_LOG, "a")
-    f.write(message)
-    f.write('\n')
-    f.close()
+    print(message)
+    #f = open(AUDIT_LOG, "a")
+    #f.write(message)
+    #f.write('\n')
+    #f.close()
