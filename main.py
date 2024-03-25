@@ -331,7 +331,7 @@ async def mumbai_faucet_error(ctx, error):
 @commands.has_any_role(*DEVELOPER_DISCORD_ROLES)
 async def amoy_faucet(ctx, address: str):
     log("amoy-faucet called")
-    tokens = 0.5
+    tokens = 1
 
     # if the faucet does not have enough funds, deny
     if faucet.get_amoy_balance() < (tokens + 0.1):
