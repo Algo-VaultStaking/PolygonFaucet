@@ -59,7 +59,7 @@ async def mainnet_faucet(ctx, address: str):
 
     # if the user is too new to the guild
     joined_delta = (datetime.now() - ctx.author.joined_at)
-    if joined_delta.days < 1 and joined_delta.seconds//3600 < 2 :
+    if joined_delta.days < 1 and joined_delta.seconds//3600 < 2:
         response = "Your account is too new to this guild. Please wait before requesting mainnet Matic tokens."
 
     # if the address's balance already has enough Matic, deny
