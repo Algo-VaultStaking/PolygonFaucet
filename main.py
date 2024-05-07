@@ -161,7 +161,7 @@ async def mainnet_faucet_override(ctx, address: str, tokens=0.01):
 async def mainnet_faucet_error(ctx, error):
     error_channel = bot.get_channel(id=ERROR_MESSAGE_CHANNEL)
     if str(error) == "Command raised an exception: TypeError: string indices must be integers":
-        await ctx.send("usage: `faucet-send  [address]`. \n"
+        await ctx.send("usage: `faucet-mainnet  [address]`. \n"
                        "Please do not use brackets when entering an address.")
         await error_channel.send("CommandInvokeError: \n" + str(error))
         raise error
@@ -170,12 +170,12 @@ async def mainnet_faucet_error(ctx, error):
         await error_channel.send("CommandInvokeError: \n" + str(error))
         raise error
     elif isinstance(error, BadArgument):
-        await ctx.send("usage: `faucet-send  [address]`. \n"
+        await ctx.send("usage: `faucet-mainnet  [address]`. \n"
                        "Please enter a valid address.")
         await error_channel.send("BadArgument: \n" + str(error))
         raise error
     elif isinstance(error, MissingRequiredArgument):
-        await ctx.send("usage: `faucet-send  [address]`")
+        await ctx.send("usage: `faucet-mainnet  [address]`")
         await error_channel.send("MissingRequiredArgument: \n" + str(error))
         raise error
     elif isinstance(error, MissingAnyRole):
