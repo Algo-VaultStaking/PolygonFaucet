@@ -297,23 +297,12 @@ async def amoy_faucet_override(ctx, address: str, tokens=1):
 
 @bot.command(name='amoy-reset', help='usage: faucet-amoy-reset [address]')
 @commands.has_any_role(*ADMIN_DISCORD_ROLES)
-async def amoy_faucet_reset(ctx, address: str, tokens=1):
-    log('amoy_faucet_reset called')
+async def amoy_faucet_reset(ctx, user: str):
+    print('amoy_faucet_reset called')
 
-    # if we have a good address
-    if address == address.lower():
-        response = "Your address appears to be in the wrong format. Please make sure your address has both upper- " \
-                   "and lower-case letters. This can be found on Polygonscan, or your wallet."
-        raw_audit_log(str(datetime.now()) + ": " + address + " was in the wrong format.")
+    response = f"Reset <@{user}>'s amoy POL limit. They can request 50 more POL."
+    user_db.reset_amoy_amount(user)
 
-    elif valid_address(address):
-
-        response = "**Sent " + str(tokens) + " POL to " + address[:4] + "..." + address[-2:] + \
-                           ". **The faucet now has " + str(faucet.get_amoy_balance()) + " POL left."
-
-    else:
-        response = "usage: `faucet  send  [address]  [tokens]`. \n" \
-                   "Please enter a valid address."
     await ctx.send(response)
 
 
