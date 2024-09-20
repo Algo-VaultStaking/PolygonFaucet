@@ -233,9 +233,9 @@ async def amoy_faucet(ctx, address: str):
         response = "User blacklisted."
         raw_audit_log(str(datetime.now()) + ": " + address + " is on the blacklist.")
 
-    # if the user has requested more than 50 POL, prevent the spam
-    elif DB_CHECK and (user_db.get_user_totals(ctx.author.id, address, "Amoy") >= 20):
-        response = "You have already requested 20 POL. Please ping <@712863455467667526> for more."
+    # if the user has requested more than 100 POL, prevent the spam
+    elif DB_CHECK and (user_db.get_user_totals(ctx.author.id, address, "Amoy") >= 100):
+        response = "You have already requested 100 POL. Please ping <@712863455467667526> for more."
 
     # if we passed all the above checks, proceed
     elif valid_address(address):
@@ -289,6 +289,28 @@ async def amoy_faucet_override(ctx, address: str, tokens=1):
                 response = "There was an error."
         else:
             response = f"The faucet does not have enough funds. Please refill.\n`{FAUCET_ADDRESS}`"
+    else:
+        response = "usage: `faucet  send  [address]  [tokens]`. \n" \
+                   "Please enter a valid address."
+    await ctx.send(response)
+
+
+@bot.command(name='amoy-reset', help='usage: faucet-amoy-reset [address]')
+@commands.has_any_role(*ADMIN_DISCORD_ROLES)
+async def amoy_faucet_reset(ctx, address: str, tokens=1):
+    log('amoy_faucet_reset called')
+
+    # if we have a good address
+    if address == address.lower():
+        response = "Your address appears to be in the wrong format. Please make sure your address has both upper- " \
+                   "and lower-case letters. This can be found on Polygonscan, or your wallet."
+        raw_audit_log(str(datetime.now()) + ": " + address + " was in the wrong format.")
+
+    elif valid_address(address):
+
+        response = "**Sent " + str(tokens) + " POL to " + address[:4] + "..." + address[-2:] + \
+                           ". **The faucet now has " + str(faucet.get_amoy_balance()) + " POL left."
+
     else:
         response = "usage: `faucet  send  [address]  [tokens]`. \n" \
                    "Please enter a valid address."
