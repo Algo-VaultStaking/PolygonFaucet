@@ -137,7 +137,7 @@ def add_user(user_name: str, user_id: str):
 def reset_amoy_amount(user: int):
     conn = connection()
     cur = conn.cursor()
-    command = f"INSERT INTO Transactions VALUES (\"{user}\", \"0x0\", -50, \"01/01/2022, 00:00:00\", \"01/01/2022, 00:00:00\", \"Amoy\");"
+    command = f"INSERT INTO Transactions VALUES (\"{user}\", \"0x0\", -150, \"01/01/2022, 00:00:00\", \"01/01/2022, 00:00:00\", \"Amoy\");"
     cur.execute(command)
     conn.commit()
     conn.close()

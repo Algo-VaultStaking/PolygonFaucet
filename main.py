@@ -216,7 +216,7 @@ async def blacklist_address(ctx, address: str):
 @commands.has_any_role(*DEVELOPER_DISCORD_ROLES)
 async def amoy_faucet(ctx, address: str):
     log("amoy-faucet called")
-    tokens = 1
+    tokens = 5
 
     # if the faucet does not have enough funds, deny
     if faucet.get_amoy_balance() < (tokens + 0.1):
@@ -300,7 +300,7 @@ async def amoy_faucet_override(ctx, address: str, tokens=1):
 async def amoy_faucet_reset(ctx, user: str):
     print('amoy_faucet_reset called')
 
-    response = f"Reset <@{user}>'s amoy POL limit. They can request 50 more POL."
+    response = f"Reset <@{user}>'s amoy POL limit. They can request 150 more POL."
     user_db.reset_amoy_amount(user)
 
     await ctx.send(response)
