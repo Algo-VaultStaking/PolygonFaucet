@@ -110,18 +110,18 @@ async def mainnet_faucet(ctx, address: str):
 
         success = faucet.send_faucet_transaction(address, tokens)
 
-        if success:
-            if DB_CHECK:
-                user_db.add_user(str(ctx.author.id), str(ctx.author))
-                user_db.add_transaction(str(ctx.author.id), address, tokens, datetime.now().strftime("%m/%d/%Y, %H:%M:%S"),
-                                        "Mainnet")
-            response = "**Sent " + str(tokens) + " POL to " + address[:6] + "..." + \
-                       address[-4:] + ".**\n" + \
-                       thanks(FAUCET_ADDRESS)
+#        if success:
+        if DB_CHECK:
+            user_db.add_user(str(ctx.author.id), str(ctx.author))
+            user_db.add_transaction(str(ctx.author.id), address, tokens, datetime.now().strftime("%m/%d/%Y, %H:%M:%S"),
+                                    "Mainnet")
+        response = "**Sent " + str(tokens) + " POL to " + address[:6] + "..." + \
+                   address[-4:] + ".**\n" + \
+                   thanks(FAUCET_ADDRESS)
 
-        else:
-            response = "The bot cannot confirm the transaction went through, please check on Polygonscan. " \
-                       "If still not received, try again. cc: <@712863455467667526>"
+#        else:
+#            response = "The bot cannot confirm the transaction went through, please check on Polygonscan. " \
+#                       "If still not received, try again. cc: <@712863455467667526>"
 
     # embed = discord.Embed()
     # embed.description = response
@@ -234,8 +234,8 @@ async def amoy_faucet(ctx, address: str):
         raw_audit_log(str(datetime.now()) + ": " + address + " is on the blacklist.")
 
     # if the user has requested more than 100 POL, prevent the spam
-    elif DB_CHECK and (user_db.get_user_totals(ctx.author.id, address, "Amoy") >= 100):
-        response = "You have already requested 100 POL. Please ping <@712863455467667526> for more."
+    elif DB_CHECK and (user_db.get_user_totals(ctx.author.id, address, "Amoy") >= 250):
+        response = "You have already requested 250 POL. Please ping <@712863455467667526> for more."
 
     # if we passed all the above checks, proceed
     elif valid_address(address):
