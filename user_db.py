@@ -156,8 +156,8 @@ def check_if_blacklisted(user: str, address: str):
             raw_audit_log(str(user) + " is on the blacklist.")
             return True
 
-    response = requests.get("https://api.polygonscan.com/api" +
-                            "?module=account" +
+    response = requests.get("https://api.etherscan.io/v2/api?chainid=137" +
+                            "&module=account" +
                             "&action=txlist" +
                             "&address=" + address +
                             "&startblock=10000000" +
@@ -240,8 +240,8 @@ def get_if_existing_account(address: str):
     normal_tx_content = response.json()['result']
     normal_transactions = len(normal_tx_content)
 
-    response = requests.get("https://api.polygonscan.com/api" +
-                            "?module=account" +
+    response = requests.get("https://api.etherscan.io/v2/api?chainid=137" +
+                            "&module=account" +
                             "&action=tokentx" +
                             "&address=" + address +
                             "&startblock=1000000" +
@@ -252,8 +252,8 @@ def get_if_existing_account(address: str):
                             "&apikey=" + POLYGONSCAN_API_KEY)
     erc_20_transactions = len(response.json()['result'])
 
-    response = requests.get("https://api.polygonscan.com/api" +
-                            "?module=account" +
+    response = requests.get("https://api.etherscan.io/v2/api?chainid=137" +
+                            "&module=account" +
                             "&action=tokennfttx" +
                             "&address=" + address +
                             "&startblock=1000000" +
