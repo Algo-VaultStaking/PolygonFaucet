@@ -28,7 +28,7 @@ ERROR_MESSAGE_CHANNEL = int(c["DISCORD"]["error_channel"])
 DB_CHECK = True if str(c["DATABASE"]["db_check"]).lower() == "true" else False
 
 token = DISCORD_TOKEN
-intents = discord.Intents.default()
+intents = discord.Intents.all()
 intents.members = True
 intents.messages = True
 
@@ -42,6 +42,7 @@ def thanks(addr):
 
 @bot.event
 async def on_ready():
+    discord.chunk_guilds_at_startup=False
     log(f'Logged in as {bot.user} (ID: {bot.user.id})')
     log('---------')
 

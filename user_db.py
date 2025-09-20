@@ -227,8 +227,8 @@ def add_blacklisted_user(user: str, address=""):
 
 
 def get_if_existing_account(address: str):
-    response = requests.get("https://api.polygonscan.com/api" +
-                            "?module=account" +
+    response = requests.get("https://api.etherscan.io/v2/api?chainid=137"
+                            "&module=account" +
                             "&action=txlist" +
                             "&address=" + address +
                             "&startblock=10000000" +
