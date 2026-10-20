@@ -35,7 +35,7 @@ def send_faucet_transaction(address: str, tokens: float):
     tokens = tokens * 1e18
 
     # Get how many transactions we've done to know what our next nonce will be
-    nonce = w3.eth.getTransactionCount(FAUCET_ADDRESS)
+    nonce = w3.eth.get_transaction_count(FAUCET_ADDRESS)
     log("Trying to send mainnet transaction with nonce " + str(nonce) + "...")
 
     # Iterate over a few different gas values, with 30 seconds between to make sure it goes through
@@ -57,7 +57,7 @@ def send_faucet_transaction(address: str, tokens: float):
             )
 
             # Send the transaction
-            txn_hash = w3.eth.send_raw_transaction(signed_txn.rawTransaction)
+            txn_hash = w3.eth.send_raw_transaction(signed_txn.raw_transaction)
 
             # Wait for confirmation the transaction was mined
             w3.eth.wait_for_transaction_receipt(txn_hash, timeout=10)
@@ -73,7 +73,7 @@ def send_faucet_transaction(address: str, tokens: float):
 
 
 def send_mumbai_faucet_transaction(address: str, tokens: float):
-    nonce = mumbai_w3.eth.getTransactionCount(FAUCET_ADDRESS)
+    nonce = mumbai_w3.eth.get_transaction_count(FAUCET_ADDRESS)
 
     for gas in [int(35 * 1e9), int(50 * 1e9), int(100 * 1e9), int(350 * 1e9), int(500 * 1e9), int(1000 * 1e9)]:
         try:
@@ -93,7 +93,7 @@ def send_mumbai_faucet_transaction(address: str, tokens: float):
             )
 
             # Send the transaction
-            txn_hash = mumbai_w3.eth.send_raw_transaction(signed_txn.rawTransaction)
+            txn_hash = mumbai_w3.eth.send_raw_transaction(signed_txn.raw_transaction)
 
             # Wait for confirmation the transaction was mined
             mumbai_w3.eth.wait_for_transaction_receipt(txn_hash, timeout=30)
@@ -109,7 +109,7 @@ def send_mumbai_faucet_transaction(address: str, tokens: float):
 
 
 def send_amoy_faucet_transaction(address: str, tokens: float):
-    nonce = amoy_w3.eth.getTransactionCount(FAUCET_ADDRESS)
+    nonce = amoy_w3.eth.get_transaction_count(FAUCET_ADDRESS)
 
     for gas in [int(35 * 1e9), int(50 * 1e9), int(100 * 1e9), int(350 * 1e9), int(500 * 1e9), int(1000 * 1e9)]:
         try:
@@ -129,7 +129,7 @@ def send_amoy_faucet_transaction(address: str, tokens: float):
             )
 
             # Send the transaction
-            txn_hash = amoy_w3.eth.send_raw_transaction(signed_txn.rawTransaction)
+            txn_hash = amoy_w3.eth.send_raw_transaction(signed_txn.raw_transaction)
 
             # Wait for confirmation the transaction was mined
             amoy_w3.eth.wait_for_transaction_receipt(txn_hash, timeout=30)
@@ -147,7 +147,7 @@ def send_amoy_faucet_transaction(address: str, tokens: float):
 # Get address balance
 def get_balance(address):
     try:
-        response = w3.eth.getBalance(address) / 1e18
+        response = w3.eth.get_balance(address) / 1e18
     except Exception as e:
         print(e)
         response = 0.0
@@ -157,7 +157,7 @@ def get_balance(address):
 # Get faucet balance
 def get_faucet_balance():
     try:
-        response = w3.eth.getBalance(FAUCET_ADDRESS) / 1e18
+        response = w3.eth.get_balance(FAUCET_ADDRESS) / 1e18
     except Exception as e:
         print(e)
         response = 0.0
@@ -166,7 +166,7 @@ def get_faucet_balance():
 
 def get_mumbai_balance():
     try:
-        response = mumbai_w3.eth.getBalance(FAUCET_ADDRESS) / 1e18
+        response = mumbai_w3.eth.get_balance(FAUCET_ADDRESS) / 1e18
     except Exception as e:
         response = e
     return response
@@ -174,7 +174,7 @@ def get_mumbai_balance():
 
 def get_amoy_balance():
     try:
-        response = amoy_w3.eth.getBalance(FAUCET_ADDRESS) / 1e18
+        response = amoy_w3.eth.get_balance(FAUCET_ADDRESS) / 1e18
     except Exception as e:
         response = e
     return response
