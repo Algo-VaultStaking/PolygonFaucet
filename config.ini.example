@@ -4,7 +4,7 @@ api_key = [polygonscan api key]
 
 [TOKEN COUNTS]
 MAX_TOKENS_REQUESTED = 0.02
-MAX_MUMBAI_TOKENS_REQUESTED = 5
+MAX_AMOY_TOKENS_REQUESTED = 5
 
 [FAUCET]
 address = 0x
@@ -12,7 +12,7 @@ private_key = [can find in Metamask]
 
 [RPC]
 mainnet = https://polygon-rpc.com
-testnet = https://rpc-mumbai.maticvigil.com
+amoy = https://rpc-amoy.polygon.technology
 
 [DISCORD]
 token =

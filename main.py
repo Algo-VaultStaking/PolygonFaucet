@@ -28,11 +28,10 @@ ERROR_MESSAGE_CHANNEL = int(c["DISCORD"]["error_channel"])
 DB_CHECK = True if str(c["DATABASE"]["db_check"]).lower() == "true" else False
 
 token = DISCORD_TOKEN
-intents = discord.Intents.all()
-intents.members = True
-intents.messages = True
+intents = discord.Intents.default()
+intents.message_content = True
 
-bot = commands.Bot(command_prefix='faucet-', intents=intents)
+bot = commands.Bot(command_prefix='faucet-', intents=intents, chunk_guilds_at_startup=False)
 
 
 def thanks(addr):
@@ -42,7 +41,6 @@ def thanks(addr):
 
 @bot.event
 async def on_ready():
-    discord.chunk_guilds_at_startup=False
     log(f'Logged in as {bot.user} (ID: {bot.user.id})')
     log('---------')
 
