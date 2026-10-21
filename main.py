@@ -85,9 +85,9 @@ async def mainnet_faucet(ctx, address: str):
                       ") has an invalid address.")
 
     # if the address has 0 transactions, deny
-    elif not user_db.get_if_existing_account(address):
-        response = "Address must have activity/previous transactions before requesting."
-        raw_audit_log(str(datetime.now()) + ": " + str(ctx.author) + "(" + str(ctx.author.id) + ") has 0 transactions.")
+    #elif not user_db.get_if_existing_account(address):
+    #    response = "Address must have activity/previous transactions before requesting."
+    #    raw_audit_log(str(datetime.now()) + ": " + str(ctx.author) + "(" + str(ctx.author.id) + ") has 0 transactions.")
 
     # if the faucet does not have enough funds, deny
     elif faucet.get_faucet_balance() < (tokens + MAX_TOKENS_REQUESTED):
