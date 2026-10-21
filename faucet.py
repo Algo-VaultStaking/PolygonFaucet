@@ -1,9 +1,12 @@
 import re
+import time
 import configparser
 from datetime import datetime
+from threading import Lock
 
 from logger import log, raw_audit_log
 from web3 import Web3
+from web3.exceptions import TimeExhausted
 from web3.middleware import ExtraDataToPOAMiddleware
 
 # Load config
@@ -15,7 +18,7 @@ FAUCET_PRIVKEY = str(c["FAUCET"]["private_key"])
 
 GWEI = 10 ** 9
 MAX_FEE_CAP = 1000 * GWEI
-RECEIPT_TIMEOUT = 5
+RECEIPT_TIMEOUT = 15
 FEE_BUMP_GWEI = 50 * GWEI
 FEE_BUMP_FACTOR = 1.15
 
@@ -26,6 +29,8 @@ w3.middleware_onion.inject(ExtraDataToPOAMiddleware, layer=0)
 amoy_rpc_url = str(c["RPC"]["amoy"])
 amoy_w3 = Web3(Web3.HTTPProvider(amoy_rpc_url))
 amoy_w3.middleware_onion.inject(ExtraDataToPOAMiddleware, layer=0)
+
+_send_locks = {137: Lock(), 80002: Lock()}
 
 
 def valid_address(address):
@@ -59,43 +64,75 @@ def _bump_fees(max_fee, priority):
     return max_fee, priority
 
 
+def _nonce_mined(client, nonce):
+    return client.eth.get_transaction_count(FAUCET_ADDRESS, "latest") > nonce
+
+
+def _mark_sent(network, address, value_wei, nonce, max_fee, priority):
+    log("Sent " + network + " transaction to " + address + " with nonce " + str(nonce))
+    raw_audit_log(str(datetime.now()) + ": Sent " + str(value_wei) + " wei to " + str(address) +
+                  " with nonce " + str(nonce) + " maxFee=" + str(max_fee / GWEI) +
+                  " priority=" + str(priority / GWEI))
+    return True
+
+
 def _send_eip1559_transaction(client, address: str, value_wei: int, chain_id: int, gas_limit: int, network: str):
-    nonce = client.eth.get_transaction_count(FAUCET_ADDRESS)
-    max_fee, priority = _eip1559_fees(client)
-    log("Trying to send " + network + " transaction with nonce " + str(nonce) + "...")
+    lock = _send_locks.get(chain_id)
+    if lock:
+        lock.acquire()
+    try:
+        nonce = client.eth.get_transaction_count(FAUCET_ADDRESS, "pending")
+        max_fee, priority = _eip1559_fees(client)
+        log("Trying to send " + network + " transaction with nonce " + str(nonce) + "...")
+        txn_hash = None
 
-    while max_fee <= MAX_FEE_CAP:
-        try:
-            log("Trying " + network + " transaction to " + address + " with nonce " + str(nonce) +
-                " maxFee=" + str(max_fee / GWEI) + " priority=" + str(priority / GWEI))
+        while max_fee <= MAX_FEE_CAP:
+            try:
+                log("Trying " + network + " transaction to " + address + " with nonce " + str(nonce) +
+                    " maxFee=" + str(max_fee / GWEI) + " priority=" + str(priority / GWEI))
 
-            signed_txn = client.eth.account.sign_transaction(dict(
-                type=2,
-                nonce=nonce,
-                maxFeePerGas=int(max_fee),
-                maxPriorityFeePerGas=int(priority),
-                gas=gas_limit,
-                to=Web3.to_checksum_address(address),
-                value=int(value_wei),
-                data=b'',
-                chainId=chain_id,
-            ),
-                FAUCET_PRIVKEY,
-            )
+                signed_txn = client.eth.account.sign_transaction(dict(
+                    type=2,
+                    nonce=nonce,
+                    maxFeePerGas=int(max_fee),
+                    maxPriorityFeePerGas=int(priority),
+                    gas=gas_limit,
+                    to=Web3.to_checksum_address(address),
+                    value=int(value_wei),
+                    data=b'',
+                    chainId=chain_id,
+                ),
+                    FAUCET_PRIVKEY,
+                )
 
-            txn_hash = client.eth.send_raw_transaction(signed_txn.raw_transaction)
-            client.eth.wait_for_transaction_receipt(txn_hash, timeout=RECEIPT_TIMEOUT)
-
-            log("Sent " + network + " transaction to " + address + " with nonce " + str(nonce))
-            raw_audit_log(str(datetime.now()) + ": Sent " + str(value_wei) + " wei to " + str(address) +
-                          " with nonce " + str(nonce) + " maxFee=" + str(max_fee / GWEI) +
-                          " priority=" + str(priority / GWEI))
-            return True
-        except Exception as e:
-            raw_audit_log(str(datetime.now()) + ": Sending failed: " + str(e))
-            max_fee, priority = _bump_fees(max_fee, priority)
-    raw_audit_log(str(datetime.now()) + ": Sending failed.")
-    return False
+                txn_hash = client.eth.send_raw_transaction(signed_txn.raw_transaction)
+                client.eth.wait_for_transaction_receipt(txn_hash, timeout=RECEIPT_TIMEOUT)
+                return _mark_sent(network, address, value_wei, nonce, max_fee, priority)
+            except TimeExhausted:
+                if _nonce_mined(client, nonce):
+                    return _mark_sent(network, address, value_wei, nonce, max_fee, priority)
+                raw_audit_log(str(datetime.now()) + ": Receipt timed out; bumping fees for nonce " + str(nonce))
+                max_fee, priority = _bump_fees(max_fee, priority)
+            except Exception as e:
+                err = str(e).lower()
+                if _nonce_mined(client, nonce) or "nonce too low" in err:
+                    return _mark_sent(network, address, value_wei, nonce, max_fee, priority)
+                raw_audit_log(str(datetime.now()) + ": Sending failed: " + str(e))
+                if "already known" in err and txn_hash is not None:
+                    try:
+                        client.eth.wait_for_transaction_receipt(txn_hash, timeout=RECEIPT_TIMEOUT)
+                        return _mark_sent(network, address, value_wei, nonce, max_fee, priority)
+                    except Exception:
+                        pass
+                time.sleep(RECEIPT_TIMEOUT)
+                if _nonce_mined(client, nonce):
+                    return _mark_sent(network, address, value_wei, nonce, max_fee, priority)
+                max_fee, priority = _bump_fees(max_fee, priority)
+        raw_audit_log(str(datetime.now()) + ": Sending failed.")
+        return False
+    finally:
+        if lock:
+            lock.release()
 
 
 # Send a transaction to the requestor
