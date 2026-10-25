@@ -25,7 +25,7 @@ error_channel = [right-click channel -> copy ID]
 db_check = True/False [If True, database info required. If False, no DB needed]
 user = [usually admin]
 password =
-host =
+host = [AWS MariaDB endpoint]
 name =
 
 
