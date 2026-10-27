@@ -1,6 +1,6 @@
 # Polygon Network Faucet
 
-A Discord bot that sends small amounts of POL to community members on **Polygon mainnet** and **Amoy testnet**. Users request funds with slash commands (`/faucet-…`); the bot role-gates requests, checks wallet format and request limits, then broadcasts an EIP-1559 transfer from a shared faucet wallet.
+A Discord bot that sends small amounts of POL to community members on **Polygon mainnet** and **Amoy testnet**. Users request funds with slash commands (`/faucet-…`). The same commands still work as `faucet-` messages until early November; the bot warns that those message commands will be deprecated, then runs the request. It role-gates requests, checks wallet format and request limits, then broadcasts an EIP-1559 transfer from a shared faucet wallet.
 
 The same faucet address has sent:
 
@@ -31,7 +31,7 @@ Requests are denied when the address is invalid (including all-lowercase), the w
 
 The bot is a **slash command** app. Commands are registered to each server it is in when it starts, and to a server when it joins. Invite or re-authorize the bot with the `bot` and `applications.commands` scopes or the slash commands will not appear.
 
-Prefix commands such as `faucet-mainnet` are deprecated. If someone types a message that starts with `faucet-`, the bot replies that those commands have been deprecated and points them at the slash command. That reply is the only reason the bot still needs the **Message Content** intent. It does not need Server Members or Presence intents.
+Message commands such as `faucet-mainnet 0x…` and `faucet-amoy 0x…` still run, using the same roles and limits as the slash command of the same name. The bot replies that `faucet-` commands will be deprecated in early November, points at the matching slash command, and then performs the request. Those message commands are why the bot needs the **Message Content** intent. It does not need Server Members or Presence intents.
 
 ## Setup
 

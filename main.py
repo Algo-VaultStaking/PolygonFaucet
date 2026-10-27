@@ -5,6 +5,7 @@ import discord
 from discord import app_commands
 
 import faucet
+import prefix_commands
 import user_db
 import configparser
 import json
@@ -25,7 +26,7 @@ ADMIN_DISCORD_ROLES = json.loads(c["DISCORD"]["admin_roles"])
 ERROR_MESSAGE_CHANNEL = int(c["DISCORD"]["error_channel"])
 DB_CHECK = True if str(c["DATABASE"]["db_check"]).lower() == "true" else False
 
-# Message content is only used to notice deprecated faucet- prefix messages.
+# Message content runs the legacy faucet- commands until early November.
 intents = discord.Intents.default()
 intents.message_content = True
 
@@ -34,18 +35,6 @@ tree = app_commands.CommandTree(client)
 
 _synced_guilds = set()
 _sync_lock = asyncio.Lock()
-
-SLASH_COMMANDS = {
-    "faucet-mainnet": "/faucet-mainnet",
-    "faucet-mainnet-override": "/faucet-mainnet-override",
-    "faucet-balance": "/faucet-balance",
-    "faucet-blacklist": "/faucet-blacklist",
-    "faucet-amoy": "/faucet-amoy",
-    "faucet-amoy-override": "/faucet-amoy-override",
-    "faucet-amoy-reset": "/faucet-amoy-reset",
-    "faucet-amoy-balance": "/faucet-amoy-balance",
-    "faucet-version": "/faucet-version",
-}
 
 
 def thanks(addr):
@@ -98,23 +87,6 @@ async def on_guild_join(guild):
         await sync_guild_commands(guild)
     except Exception as e:
         log("Command sync failed for " + str(guild.id) + ": " + str(e))
-
-
-@client.event
-async def on_message(message):
-    if message.author.bot or not message.content:
-        return
-    content = message.content.strip()
-    if not content.lower().startswith("faucet-"):
-        return
-    command_name = content.split(maxsplit=1)[0].lower()
-    replacement = SLASH_COMMANDS.get(command_name)
-    if replacement:
-        hint = "Use `" + replacement + "` instead."
-    else:
-        choices = ", ".join("`" + name + "`" for name in SLASH_COMMANDS.values())
-        hint = "Use slash commands instead: " + choices + "."
-    await message.channel.send("The `faucet-` commands have been deprecated. " + hint)
 
 
 @tree.command(name="faucet-version", description="Print the bot version.")
@@ -456,4 +428,57 @@ async def on_app_command_error(interaction, error):
     await send_interaction(interaction, "There was error that <@712863455467667526> needs to fix. Please try again later.")
 
 
-client.run(DISCORD_TOKEN)
+def _role_names(group):
+    if group == "member":
+        return MEMBER_DISCORD_ROLES
+    if group == "developer":
+        return DEVELOPER_DISCORD_ROLES
+    return ADMIN_DISCORD_ROLES
+
+
+def _has_prefix_role(member, group):
+    return prefix_commands.member_has_any_role(member, _role_names(group))
+
+
+def _missing_prefix_role(command_name):
+    return prefix_commands.missing_role_message(command_name, MEMBER_DISCORD_ROLES, DEVELOPER_DISCORD_ROLES)
+
+
+PREFIX_CALLBACKS = {
+    "faucet-version": version.callback,
+    "faucet-mainnet": mainnet_faucet.callback,
+    "faucet-mainnet-override": mainnet_faucet_override.callback,
+    "faucet-balance": get_mainnet_balance.callback,
+    "faucet-blacklist": blacklist_address.callback,
+    "faucet-amoy": amoy_faucet.callback,
+    "faucet-amoy-override": amoy_faucet_override.callback,
+    "faucet-amoy-reset": amoy_faucet_reset.callback,
+    "faucet-amoy-balance": get_amoy_balance.callback,
+}
+
+
+async def run_prefix_command(message):
+    async def on_error(error):
+        log(error)
+        await report_error("PrefixCommand", error)
+
+    await prefix_commands.dispatch_prefix(
+        message,
+        PREFIX_CALLBACKS,
+        _has_prefix_role,
+        _missing_prefix_role,
+        on_error,
+    )
+
+
+@client.event
+async def on_message(message):
+    if message.author.bot or not message.content:
+        return
+    if message.content.strip().lower().startswith("faucet-"):
+        log("Prefix command from " + str(message.author) + ": " + message.content.strip().split()[0])
+    await run_prefix_command(message)
+
+
+if __name__ == "__main__":
+    client.run(DISCORD_TOKEN)
