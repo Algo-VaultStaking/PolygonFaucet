@@ -1,0 +1,10 @@
+.git
+.gitignore
+venv
+.venv
+__pycache__
+**/__pycache__
+*.pyc
+config.ini
+*.md
+.cursor

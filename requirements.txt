@@ -1,0 +1,4 @@
+discord.py==2.7.1
+web3==8.0.0
+mariadb==1.1.14
+requests==2.34.2
